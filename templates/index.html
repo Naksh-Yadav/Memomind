@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5f0">
+  <meta name="description" content="Turn your study notes into clear, memorable learning aids with MemoMind.">
+  <title>MemoMind — Make it memorable</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="MemoMind home"><span class="brand-mark" aria-hidden="true">m</span><span>memo<span class="brand-light">mind</span></span></a>
+    <div class="topbar-right"><span class="status-pill"><i></i><span id="service-status">Checking AI</span></span><button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">◐</button></div>
+  </header>
+
+  <main id="top">
+    <section class="hero" id="input-view">
+      <div class="hero-copy"><div class="eyebrow"><span class="eyebrow-line"></span> YOUR NOTES, REWIRED</div>
+        <h1>Make it <em>memorable.</em></h1>
+        <p class="hero-sub">Turn the hard-to-remember into the hard-to-forget.<br>Start with anything you're learning.</p>
+      </div>
+      <section class="workspace" aria-label="Create a mnemonic">
+        <div class="input-card">
+          <div class="card-head"><div class="input-tabs"><button class="tab active" data-tab="paste" type="button">✳ &nbsp; Paste your notes</button><button class="tab" data-tab="upload" type="button">↑ &nbsp; Upload a file</button></div><button class="clear-btn" id="clear-text" type="button">Clear</button></div>
+          <div class="paste-panel" id="paste-panel"><label class="sr-only" for="source-text">Paste your notes here</label><textarea id="source-text" maxlength="30000" placeholder="Paste a concept, a process, a list… anything you need to remember."></textarea><div class="editor-footer"><span id="editor-hint">Your notes stay private and are not saved.</span><span><b id="word-count">0</b> words <span class="dot-sep">·</span> <b id="char-count">0</b> / 30,000</span></div></div>
+          <div class="upload-panel hidden" id="upload-panel"><input id="file-input" type="file" accept=".pdf,.docx,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden><div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Choose or drop a PDF, DOCX, or TXT file"><span class="upload-icon">↑</span><strong>Drop your notes here</strong><span>or <button class="browse-btn" id="browse-file" type="button">browse files</button></span><small>PDF, DOCX, or TXT · up to 12 MB</small></div><div id="file-info" class="file-info hidden"><span class="file-icon">▤</span><div class="file-meta"><strong id="file-name"></strong><span id="file-size"></span></div><button id="remove-file" class="remove-file" type="button" aria-label="Remove file">×</button></div><div class="extract-progress hidden" id="extract-progress"><span class="spinner small"></span><span>Reading your document…</span></div><div class="preview-box hidden" id="preview-box"><div class="preview-title"><span>EXTRACTED TEXT PREVIEW</span><button id="edit-extracted" type="button">Edit text</button></div><pre id="extracted-preview"></pre></div><textarea id="extracted-text" class="sr-only" aria-label="Extracted document text"></textarea></div>
+          <div class="generate-row"><span class="privacy-note"><span>✦</span> Understand first. Memorize smarter.</span><button id="generate-btn" class="primary-btn" type="button">Make it memorable <span>↗</span></button></div>
+        </div>
+        <div class="sample-row"><span class="sample-label">TRY A SAMPLE</span><button type="button" class="sample-chip" id="sample-btn">The planets in order <span>→</span></button><span class="sample-hint">See how a tricky list becomes a story</span></div>
+      </section>
+      <section class="how-it-works"><div class="section-label">A BETTER WAY TO STUDY</div><div class="steps"><article><span class="step-num">01</span><div><h3>Understand</h3><p>We find the ideas that matter in your notes.</p></div></article><article><span class="step-num">02</span><div><h3>Connect</h3><p>The right memory technique for your material.</p></div></article><article><span class="step-num">03</span><div><h3>Recall</h3><p>Practice with a quick check, built from your facts.</p></div></article></div></section>
+    </section>
+
+    <section class="results hidden" id="results-view" aria-live="polite">
+      <div class="results-top"><button id="back-btn" class="back-btn" type="button">← &nbsp; Back to notes</button><div class="result-actions"><button id="copy-all-btn" class="quiet-btn" type="button">Copy all</button><button id="regenerate-btn" class="quiet-btn" type="button">↻ &nbsp; New mnemonic</button></div></div>
+      <div class="result-heading"><span class="eyebrow"><span class="eyebrow-line"></span> YOUR LEARNING GUIDE</span><h1 id="result-topic"></h1><p id="result-overview"></p></div>
+      <article class="mnemonic-card"><div class="mnemonic-card-top"><div><span class="card-kicker">THE MEMORY HOOK</span><h2 id="mnemonic-title"></h2></div><button class="copy-btn" id="copy-mnemonic-btn" type="button">▢ Copy</button></div><blockquote id="mnemonic-text"></blockquote><div class="technique-row"><span class="technique-badge" id="technique-label"></span><span id="technique-reason"></span></div><div class="mnemonic-breakdown"><div class="mini-label">HOW THE PIECES FIT</div><div id="breakdown-list" class="breakdown-list"></div></div></article>
+      <div id="accuracy-notes" class="accuracy-box hidden"><span>ⓘ</span><div><strong>Keep in mind</strong><ul id="accuracy-list"></ul></div></div>
+      <div class="result-grid"><section class="result-panel facts-panel"><div class="panel-heading"><span class="section-icon">✳</span><div><span class="card-kicker">THE SOURCE, MADE CLEAR</span><h2>Key facts</h2></div></div><ol id="facts-list" class="facts-list"></ol></section><section class="result-panel tips-panel"><div class="panel-heading"><span class="section-icon">⌁</span><div><span class="card-kicker">MAKE IT STICK</span><h2>Memory tips</h2></div></div><ul id="tips-list" class="tips-list"></ul></section></div>
+      <section class="quiz-section" id="quiz-section"><div class="quiz-header"><div><span class="card-kicker">ACTIVE RECALL</span><h2>Quick recall</h2><p>Check what stayed with you. Your answers are revealed after you submit.</p></div><div class="quiz-count" id="quiz-count"></div></div><form id="quiz-form"><div id="quiz-questions"></div><div class="quiz-submit-row"><button id="submit-quiz" class="primary-btn" type="submit">Check my answers <span>↗</span></button><span id="quiz-result" class="quiz-result" role="status"></span><button id="retry-quiz" type="button" class="quiet-btn hidden">Try again</button></div></form></section>
+      <div class="result-footer"><span>MemoMind is a study aid. Check exact details against your original source.</span><button type="button" id="copy-explanation-btn" class="quiet-btn">Copy explanation</button></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="{{ url_for('static', filename='js/app.js', v='3') }}" defer></script>
+</body>
+</html>
