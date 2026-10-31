@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const state = { mode: 'paste', file: null, result: null, loading: false, toastTimer: null };
+  const state = { mode: 'paste', file: null, result: null, loading: false, toastTimer: null, maxUploadBytes: 12 * 1024 * 1024 };
   const sourceInput = $('source-text');
   const inputView = $('input-view');
   const resultsView = $('results-view');
@@ -52,6 +52,10 @@
     try {
       const data = await api('/api/health', { signal: AbortSignal.timeout(5000) });
       const pill = document.querySelector('.status-pill');
+      if (Number.isFinite(data.max_upload_bytes) && data.max_upload_bytes > 0) {
+        state.maxUploadBytes = data.max_upload_bytes;
+        $('upload-limit').textContent = `${Math.max(1, Math.floor(data.max_upload_bytes / (1024 * 1024)))} MB`;
+      }
       if (data.ai_configured) { pill.classList.add('ready'); $('service-status').textContent = 'AI ready'; }
       else { pill.classList.add('offline'); $('service-status').textContent = 'Setup needed'; }
     } catch { document.querySelector('.status-pill').classList.add('offline'); $('service-status').textContent = 'Server unavailable'; }
@@ -61,7 +65,7 @@
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['pdf', 'docx', 'txt'].includes(ext)) { toast('Choose a PDF, DOCX, or TXT file.'); return; }
-    if (file.size > 12 * 1024 * 1024) { toast('This file is over the 12 MB limit.'); return; }
+    if (file.size > state.maxUploadBytes) { toast(`This file is over the ${Math.floor(state.maxUploadBytes / (1024 * 1024))} MB limit.`); return; }
     state.file = file; $('drop-zone').classList.add('hidden'); $('preview-box').classList.add('hidden');
     $('file-info').classList.remove('hidden'); $('file-name').textContent = file.name; $('file-size').textContent = formatBytes(file.size);
     $('extract-progress').classList.remove('hidden'); $('clear-text').classList.add('hidden'); $('extracted-text').value = ''; updateCounts();
@@ -159,7 +163,38 @@
     $('quiz-result').textContent = `${score} / ${cards.length} correct`;
     $('submit-quiz').classList.add('hidden'); $('retry-quiz').classList.remove('hidden');
   }
-  function copy(text, message) { navigator.clipboard.writeText(text).then(() => toast(message)).catch(() => toast('Clipboard access was blocked by your browser.')); }
+  async function copy(text, message) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const field = document.createElement('textarea'); field.className = 'clipboard-fallback';
+        field.value = text; field.setAttribute('readonly', '');
+        document.body.append(field); field.select();
+        const copied = document.execCommand('copy'); field.remove();
+        if (!copied) throw new Error('Copy failed');
+      }
+      toast(message);
+    } catch { toast('Clipboard access was blocked by your browser.'); }
+  }
+  async function shareApp() {
+    const url = document.querySelector('link[rel="canonical"]')?.href || window.location.href;
+    const shareData = { title: 'MemoMind — Make it memorable', text: 'Turn the hard-to-remember into the hard-to-forget.', url };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch (err) { if (err.name !== 'AbortError') toast('Sharing was not available.'); }
+      return;
+    }
+    copy(url, 'MemoMind link copied.');
+  }
+  async function shareGuide() {
+    if (!state.result) return shareApp();
+    const data = { title: `${state.result.topic} — MemoMind`, text: allResultsText() };
+    if (navigator.share) {
+      try { await navigator.share(data); } catch (err) { if (err.name !== 'AbortError') toast('Sharing was not available.'); }
+      return;
+    }
+    copy(data.text, 'Learning guide copied.');
+  }
   function allResultsText() {
     const data = state.result; if (!data) return '';
     return `${data.topic}\n\n${data.content_overview}\n\n${data.mnemonic.title}\n${data.mnemonic.text}\nTechnique: ${data.technique} — ${data.technique_reason}\n\nBreakdown\n${data.mnemonic.breakdown.map((x) => `• ${x.component}: ${x.meaning}. ${x.explanation}`).join('\n')}\n\nKey facts\n${data.key_facts.map((x, i) => `${i + 1}. ${x.fact} — ${x.explanation}`).join('\n')}\n\nMemory tips\n${data.memory_tips.map((x) => `• ${x}`).join('\n')}`;
@@ -186,6 +221,8 @@
   $('copy-mnemonic-btn').addEventListener('click', () => copy(`${state.result.mnemonic.title}\n${state.result.mnemonic.text}`, 'Mnemonic copied.'));
   $('copy-all-btn').addEventListener('click', () => copy(allResultsText(), 'Learning guide copied.'));
   $('copy-explanation-btn').addEventListener('click', () => copy(explanationText(), 'Explanation copied.'));
+  $('share-app-btn').addEventListener('click', shareApp);
+  $('share-guide-btn').addEventListener('click', shareGuide);
   $('quiz-form').addEventListener('submit', submitQuiz);
   $('retry-quiz').addEventListener('click', () => renderQuiz(state.result.recall_test));
   $('theme-toggle').addEventListener('click', () => { document.body.classList.toggle('dark'); localStorage.setItem('memomind-theme', document.body.classList.contains('dark') ? 'dark' : 'light'); });

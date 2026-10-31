@@ -16,9 +16,17 @@ def _int_setting(name: str, default: int, minimum: int = 1) -> int:
 
 
 class Config:
-    SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "local-memomind-development-key")
+    APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+    _secret_key = os.getenv("FLASK_SECRET_KEY", "").strip()
+    if APP_ENV == "production" and not _secret_key:
+        raise RuntimeError("Set FLASK_SECRET_KEY before starting MemoMind in production.")
+    SECRET_KEY = _secret_key or "local-memomind-development-key"
+    PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = APP_ENV == "production"
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
     GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite").strip()
     GEMINI_PRIMARY_TIMEOUT_MS = _int_setting("GEMINI_PRIMARY_TIMEOUT_MS", 25000)
     MAX_CONTENT_LENGTH = _int_setting("MAX_UPLOAD_MB", 12) * 1024 * 1024

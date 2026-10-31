@@ -18,7 +18,7 @@ logger = logging.getLogger("memomind")
 
 
 def create_app(config_override=None):
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder="public/static", static_url_path="/static")
     app.config.from_object(Config)
     if config_override:
         app.config.update(config_override)
@@ -57,7 +57,36 @@ def create_app(config_override=None):
     @app.get("/api/health")
     def health():
         configured = bool(app.config["GEMINI_API_KEY"])
-        return jsonify({"status": "ok", "ai_configured": configured, "model": app.config["GEMINI_MODEL"] if configured else None})
+        return jsonify({
+            "status": "ok",
+            "ai_configured": configured,
+            "model": app.config["GEMINI_MODEL"] if configured else None,
+            "max_upload_bytes": app.config["MAX_FILE_BYTES"],
+        })
+
+    @app.context_processor
+    def sharing_metadata():
+        site_url = app.config["PUBLIC_BASE_URL"] or request.url_root.rstrip("/")
+        return {
+            "site_url": site_url,
+            "canonical_url": site_url + request.path,
+            "social_image_url": site_url + "/static/assets/og-card.png",
+        }
+
+    @app.after_request
+    def security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; "
+            "img-src 'self' data:; script-src 'self'; style-src 'self' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; connect-src 'self'",
+        )
+        if request.path.startswith("/api/") or request.path == "/":
+            response.headers.setdefault("Cache-Control", "no-store")
+        return response
 
     @app.post("/api/extract")
     def extract():
@@ -106,4 +135,10 @@ def create_app(config_override=None):
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", "5000")), debug=False)
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "5000"))
+    if app.config["APP_ENV"] == "production":
+        from waitress import serve
+        serve(app, host=host, port=port, threads=8, channel_timeout=240)
+    else:
+        app.run(host=host, port=port, debug=False)

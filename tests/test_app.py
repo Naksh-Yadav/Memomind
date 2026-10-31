@@ -89,10 +89,30 @@ class ApiTests(unittest.TestCase):
     def test_landing_page_and_static_assets(self):
         page = self.client.get("/")
         self.assertEqual(page.status_code, 200)
-        self.assertIn("Make it", page.get_data(as_text=True))
+        html = page.get_data(as_text=True)
+        self.assertIn("Make it", html)
+        self.assertIn("property=\"og:image\"", html)
+        self.assertIn("Share MemoMind", html)
+        self.assertIn("Share guide", html)
+        self.assertIn("rel=\"manifest\"", html)
+        self.assertEqual(page.headers.get("X-Frame-Options"), "DENY")
+        self.assertIn("Content-Security-Policy", page.headers)
+        page.close()
         script = self.client.get("/static/js/app.js")
         self.assertEqual(script.status_code, 200)
         script.close()
+        for path in ("/static/assets/favicon.ico", "/static/assets/favicon.svg", "/static/assets/favicon-16.png", "/static/assets/favicon-32.png", "/static/assets/apple-touch-icon.png", "/static/assets/icon-192.png", "/static/assets/icon-512.png", "/static/assets/mstile-150.png", "/static/assets/og-card.png", "/static/site.webmanifest", "/static/browserconfig.xml"):
+            asset = self.client.get(path)
+            self.assertEqual(asset.status_code, 200, path)
+            asset.close()
+
+    def test_configured_public_url_is_used_for_share_metadata(self):
+        app = create_app({"TESTING": True, "PUBLIC_BASE_URL": "https://memo.example"})
+        response = app.test_client().get("/")
+        html = response.get_data(as_text=True)
+        self.assertIn('property="og:url" content="https://memo.example/"', html)
+        self.assertIn('property="og:image" content="https://memo.example/static/assets/og-card.png"', html)
+        response.close()
 
     def test_extract_api_route(self):
         response = self.client.post("/api/extract", data={"file": (io.BytesIO(b"A text document containing enough content for extraction."), "notes.txt")}, content_type="multipart/form-data")
